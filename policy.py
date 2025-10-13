@@ -1,3 +1,6 @@
+import numpy as np 
+
+
 class Policy:
 
     def __init__(self, init_mean_value=0):
