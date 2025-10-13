@@ -18,9 +18,11 @@ class Policy:
         raise NotImplementedError
 
     def tell_reward(self, arm: int, reward: float) -> None:
+        """Actualiza la media incremental y el contador de pasos"""
         self.counts[arm] += 1
         n = self.counts[arm]
         self.values[arm] += (reward - self.values[arm]) / n
+        self.t += 1 
 
     @property
     def mean_estimates(self):
@@ -36,16 +38,12 @@ class EpsilonGreedyPolicy(Policy):
         super().setup(num_arms)
 
     def choose(self):
-        # Incrementamos el contador de pasos
-        self.t += 1
-        eps = self.epsilon(self.t) if callable(self.epsilon) else self.epsilon
-
-        # Con probabilidad ε exploramos
+        eps = self.epsilon(self.t + 1) if callable(self.epsilon) else self.epsilon
+        # Explorar con probabilidad ε
         if np.random.rand() < eps:
             return np.random.randint(0, self.num_arms)
-        else:
-            # Con probabilidad 1-ε elegimos el índice máximo más bajo
-            return int(np.argmax(self.values))
+        # Explotar: elegir el índice del valor máximo (más bajo si hay empate)
+        return int(np.argmax(self.values))
 
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
@@ -70,16 +68,13 @@ class UCB(Policy):
         return exploration
 
     def choose(self):
-        # Si hay algún brazo sin probar, pruébalo primero
+        # Elegir primero los brazos no probados (en orden)
         for arm in range(self.num_arms):
             if self.counts[arm] == 0:
                 return arm
 
-        # Calculamos UCB para los demás
         ucb_values = self.values + self.c * self.exploration_terms
         return int(np.argmax(ucb_values))
 
     def tell_reward(self, arm, reward):
-        # Primero actualizamos, luego incrementamos t
         super().tell_reward(arm, reward)
-        self.t += 1
