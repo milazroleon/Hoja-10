@@ -1,3 +1,6 @@
+import numpy as np   
+import pandas as pd
+
 class BanditProblem:
     
     def __init__(self, distributions):
