@@ -36,15 +36,16 @@ class EpsilonGreedyPolicy(Policy):
         super().setup(num_arms)
 
     def choose(self):
+        # Incrementamos el contador de pasos
         self.t += 1
         eps = self.epsilon(self.t) if callable(self.epsilon) else self.epsilon
 
+        # Con probabilidad ε exploramos
         if np.random.rand() < eps:
             return np.random.randint(0, self.num_arms)
-
-        best_value = np.max(self.values)
-        best_arms = np.where(self.values == best_value)[0]
-        return np.random.choice(best_arms)
+        else:
+            # Con probabilidad 1-ε elegimos el índice máximo más bajo
+            return int(np.argmax(self.values))
 
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
@@ -63,22 +64,22 @@ class UCB(Policy):
         exploration = np.zeros(self.num_arms)
         for arm in range(self.num_arms):
             if self.counts[arm] > 0:
-                exploration[arm] = np.sqrt(2 * np.log(self.t + 1) / self.counts[arm])
+                exploration[arm] = np.sqrt(np.log(self.t) / self.counts[arm])
             else:
                 exploration[arm] = np.inf
         return exploration
 
     def choose(self):
-        self.t += 1
-
+        # Si hay algún brazo sin probar, pruébalo primero
         for arm in range(self.num_arms):
             if self.counts[arm] == 0:
                 return arm
 
+        # Calculamos UCB para los demás
         ucb_values = self.values + self.c * self.exploration_terms
-        best_value = np.max(ucb_values)
-        best_arms = np.where(ucb_values == best_value)[0]
-        return np.random.choice(best_arms)
+        return int(np.argmax(ucb_values))
 
     def tell_reward(self, arm, reward):
+        # Primero actualizamos, luego incrementamos t
         super().tell_reward(arm, reward)
+        self.t += 1
