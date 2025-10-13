@@ -1,28 +1,20 @@
-import numpy as np 
-
+import numpy as np
 
 class Policy:
-
     def __init__(self, init_mean_value=0):
         self.init_mean_value = init_mean_value
         self.num_arms = None
         self.counts = None
         self.values = None
         self.t = 0
-    
+
     def setup(self, num_arms):
-        """
-            sets up the policy
-        """
         self.num_arms = num_arms
         self.counts = np.zeros(num_arms)
         self.values = np.ones(num_arms) * self.init_mean_value
         self.t = 0
-        
-    def choose(self) -> int:
-        """
-            returns the index of the next action the agent wants to take
-        """
+
+    def choose(self):
         raise NotImplementedError
 
     def tell_reward(self, arm: int, reward: float) -> None:
@@ -33,28 +25,32 @@ class Policy:
     @property
     def mean_estimates(self):
         return self.values
-    
+
+
 class EpsilonGreedyPolicy(Policy):
     def __init__(self, epsilon, init_mean_value=0):
         super().__init__(init_mean_value)
         self.epsilon = epsilon
-    
+
     def setup(self, num_arms):
         super().setup(num_arms)
 
-    def choose(self) -> int:
+    def choose(self):
         self.t += 1
         eps = self.epsilon(self.t) if callable(self.epsilon) else self.epsilon
+
         if np.random.rand() < eps:
             return np.random.randint(0, self.num_arms)
-        else:
-            return np.argmax(self.values)
-    
+
+        best_value = np.max(self.values)
+        best_arms = np.where(self.values == best_value)[0]
+        return np.random.choice(best_arms)
+
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
 
-class UCB(Policy):
 
+class UCB(Policy):
     def __init__(self, c, init_mean_value=0):
         super().__init__(init_mean_value)
         self.c = c
@@ -64,9 +60,6 @@ class UCB(Policy):
 
     @property
     def exploration_terms(self):
-        """
-            must return a numpy array with the exploration term for each arm (exploration constant c not included)
-        """
         exploration = np.zeros(self.num_arms)
         for arm in range(self.num_arms):
             if self.counts[arm] > 0:
@@ -77,8 +70,15 @@ class UCB(Policy):
 
     def choose(self):
         self.t += 1
+
+        for arm in range(self.num_arms):
+            if self.counts[arm] == 0:
+                return arm
+
         ucb_values = self.values + self.c * self.exploration_terms
-        return np.argmax(ucb_values)
-    
+        best_value = np.max(ucb_values)
+        best_arms = np.where(ucb_values == best_value)[0]
+        return np.random.choice(best_arms)
+
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
