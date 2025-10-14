@@ -6,7 +6,7 @@ class Policy:
         self.num_arms = None
         self.counts = None
         self.values = None
-        self.t = 0  
+        self.t = 0  # número de recompensas recibidas hasta ahora
 
     def setup(self, num_arms):
         self.num_arms = num_arms
@@ -18,6 +18,7 @@ class Policy:
         raise NotImplementedError
 
     def tell_reward(self, arm: int, reward: float) -> None:
+        """Actualiza el valor medio estimado y el número de veces que se eligió el brazo."""
         self.counts[arm] += 1
         n = self.counts[arm]
         self.values[arm] += (reward - self.values[arm]) / n
@@ -34,15 +35,19 @@ class EpsilonGreedyPolicy(Policy):
         self.epsilon = epsilon
 
     def choose(self):
+        # 1️⃣ Fase inicial: probar cada brazo no probado una vez (en orden)
         for arm in range(self.num_arms):
             if self.counts[arm] == 0:
                 return arm
 
+        # 2️⃣ Calcular epsilon (puede ser una función dependiente del tiempo)
         eps = self.epsilon(self.t) if callable(self.epsilon) else self.epsilon
 
+        # 3️⃣ Explorar con probabilidad epsilon
         if np.random.rand() < eps:
             return np.random.randint(0, self.num_arms)
 
+        # 4️⃣ Explotar: elegir el brazo con mayor estimado (desempate = menor índice)
         max_value = np.max(self.values)
         best_arms = np.where(self.values == max_value)[0]
         return int(best_arms[0])
@@ -57,12 +62,15 @@ class UCB(Policy):
         self.c = c
 
     def choose(self):
+        # 1️⃣ Fase inicial: probar cada brazo no probado una vez (en orden)
         for arm in range(self.num_arms):
             if self.counts[arm] == 0:
                 return arm
 
-        exploration = np.sqrt((2 * np.log(self.t + 1)) / self.counts)
+        # 2️⃣ Calcular el término de exploración clásico de UCB1
+        exploration = np.sqrt(np.log(self.t) / self.counts)
 
+        # 3️⃣ Calcular UCB y elegir el brazo con el valor más alto (desempate = menor índice)
         ucb_values = self.values + self.c * exploration
         max_value = np.max(ucb_values)
         best_arms = np.where(ucb_values == max_value)[0]
