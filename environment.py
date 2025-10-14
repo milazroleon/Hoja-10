@@ -1,80 +1,39 @@
 import numpy as np
+import pandas as pd
 
-class Policy:
-    def __init__(self, init_mean_value=0):
-        self.init_mean_value = init_mean_value
-        self.num_arms = None
-        self.counts = None
-        self.values = None
-        self.t = 0  # número de recompensas recibidas hasta ahora
+class BanditProblem:
+    def __init__(self, distributions):
+        self.distributions = distributions
+        self.num_arms = len(distributions)
 
-    def setup(self, num_arms):
-        self.num_arms = num_arms
-        self.counts = np.zeros(num_arms, dtype=int)
-        self.values = np.ones(num_arms) * self.init_mean_value
-        self.t = 0
+        self.means = [np.dot(values, probs) for values, probs in distributions]
+        self.optimal_arm = np.argmax(self.means)
+        self.optimal_mean = self.means[self.optimal_arm]
 
-    def choose(self):
-        raise NotImplementedError
+    def pull(self, arm):
+        values, probs = self.distributions[arm]
+        return np.random.choice(values, p=probs)
 
-    def tell_reward(self, arm: int, reward: float) -> None:
-        """Actualiza el valor medio estimado y el número de veces que se eligió el brazo."""
-        self.counts[arm] += 1
-        n = self.counts[arm]
-        self.values[arm] += (reward - self.values[arm]) / n
-        self.t += 1
+    def simulate_policy(self, policy, max_t):
+        policy.setup(self.num_arms)
+        total_reward = 0
+        optimal_actions = 0
+        cumulative_regret = 0
+        data = []
 
-    @property
-    def mean_estimates(self):
-        return self.values
+        for t in range(1, max_t + 1):
+            arm = policy.choose()
+            reward = self.pull(arm)
+            policy.tell_reward(arm, reward)
 
+            total_reward += reward
+            if arm == self.optimal_arm:
+                optimal_actions += 1
+            cumulative_regret += self.optimal_mean - self.means[arm]
 
-class EpsilonGreedyPolicy(Policy):
-    def __init__(self, epsilon, init_mean_value=0):
-        super().__init__(init_mean_value)
-        self.epsilon = epsilon
+            avg_reward = total_reward / t
+            optimal_rate = optimal_actions / t
+            data.append([arm, reward, avg_reward, optimal_rate, cumulative_regret])
 
-    def choose(self):
-        # 1️⃣ Fase inicial: probar cada brazo no probado una vez (en orden)
-        for arm in range(self.num_arms):
-            if self.counts[arm] == 0:
-                return arm
-
-        # 2️⃣ Calcular epsilon (puede ser una función dependiente del tiempo)
-        eps = self.epsilon(self.t) if callable(self.epsilon) else self.epsilon
-
-        # 3️⃣ Explorar con probabilidad epsilon
-        if np.random.rand() < eps:
-            return np.random.randint(0, self.num_arms)
-
-        # 4️⃣ Explotar: elegir el brazo con mayor estimado (desempate = menor índice)
-        max_value = np.max(self.values)
-        best_arms = np.where(self.values == max_value)[0]
-        return int(best_arms[0])
-
-    def tell_reward(self, arm, reward):
-        super().tell_reward(arm, reward)
-
-
-class UCB(Policy):
-    def __init__(self, c, init_mean_value=0):
-        super().__init__(init_mean_value)
-        self.c = c
-
-    def choose(self):
-        # 1️⃣ Fase inicial: probar cada brazo no probado una vez (en orden)
-        for arm in range(self.num_arms):
-            if self.counts[arm] == 0:
-                return arm
-
-        # 2️⃣ Calcular el término de exploración clásico de UCB1
-        exploration = np.sqrt(np.log(self.t) / self.counts)
-
-        # 3️⃣ Calcular UCB y elegir el brazo con el valor más alto (desempate = menor índice)
-        ucb_values = self.values + self.c * exploration
-        max_value = np.max(ucb_values)
-        best_arms = np.where(ucb_values == max_value)[0]
-        return int(best_arms[0])
-
-    def tell_reward(self, arm, reward):
-        super().tell_reward(arm, reward)
+        df = pd.DataFrame(data, columns=["arm", "reward", "avg_reward", "optimal_rate", "cum_regret"])
+        return df
