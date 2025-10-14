@@ -63,20 +63,20 @@ class UCB(Policy):
         self.c = c
 
     def choose(self):
-        # 1) fase inicial: probar cada brazo no probado en orden
+        # 1) Explora todos los brazos al menos una vez (en orden)
         for arm in range(self.num_arms):
             if self.counts[arm] == 0:
                 return arm
 
-        # 2) calcular término de exploración (evitar log(0) con t+1)
-        #    usamos np.log(self.t + 1) por seguridad si t empieza en 0/1
-        exploration = np.sqrt((2 * np.log(self.t + 1)) / self.counts)
+        # 2) Calcular el término de exploración (versión clásica)
+        exploration = np.sqrt(np.log(self.t) / self.counts)
 
-        # 3) calcular UCB y elegir mejor (desempate: menor índice)
+        # 3) Calcular UCB y elegir el mejor brazo
         ucb_values = self.values + self.c * exploration
         max_value = np.max(ucb_values)
         best_arms = np.where(ucb_values == max_value)[0]
-        return int(best_arms[0])
+        return int(best_arms[0])  # Desempate: menor índice
 
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
+
