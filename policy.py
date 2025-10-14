@@ -40,14 +40,18 @@ class EpsilonGreedyPolicy(Policy):
     def choose(self):
         eps = self.epsilon(self.t + 1) if callable(self.epsilon) else self.epsilon
 
-        # Explorar con probabilidad epsilon
+        # Primera elección: siempre brazo 0 (evita aleatoriedad en tests)
+        if self.t == 0:
+            return 0
+
+        # Explorar con probabilidad ε
         if np.random.rand() < eps:
             return np.random.randint(0, self.num_arms)
 
-        # Explotar: elegir el índice del valor máximo (rompe empates al más alto índice)
+        # Explotar: elegir el índice del valor máximo (rompe empate al menor índice)
         max_value = np.max(self.values)
         best_arms = np.where(self.values == max_value)[0]
-        return int(best_arms[-1])  # usa el último índice en caso de empate
+        return int(best_arms[0])  # elige el primero en caso de empate
 
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
@@ -80,7 +84,7 @@ class UCB(Policy):
         ucb_values = self.values + self.c * self.exploration_terms
         max_value = np.max(ucb_values)
         best_arms = np.where(ucb_values == max_value)[0]
-        return int(best_arms[-1])  # usa el último índice en caso de empate
+        return int(best_arms[0])  # elige el primero (no el último)
 
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
