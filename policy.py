@@ -67,14 +67,14 @@ class UCB(Policy):
             if self.counts[arm] == 0:
                 return arm
 
-        # 2️⃣ Calcular el término de exploración clásico de UCB1
-        exploration = np.sqrt(np.log(self.t) / self.counts)
+        # 2️⃣ Fórmula UCB1 estándar (Auer et al. 2002)
+        exploration = np.sqrt((2 * np.log(self.t + 1)) / self.counts)
 
-        # 3️⃣ Calcular UCB y elegir el brazo con el valor más alto (desempate = menor índice)
+        # 3️⃣ Calcular valor UCB y elegir el brazo con el valor más alto
         ucb_values = self.values + self.c * exploration
         max_value = np.max(ucb_values)
         best_arms = np.where(ucb_values == max_value)[0]
-        return int(best_arms[0])
+        return int(best_arms[0])  # Desempate: menor índice
 
     def tell_reward(self, arm, reward):
         super().tell_reward(arm, reward)
