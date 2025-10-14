@@ -1,8 +1,7 @@
-import numpy as np   
+import numpy as np
 import pandas as pd
 
 class BanditProblem:
-    
     def __init__(self, distributions):
         self.distributions = distributions
         self.num_arms = len(distributions)
@@ -14,7 +13,7 @@ class BanditProblem:
     def pull(self, arm):
         values, probs = self.distributions[arm]
         return np.random.choice(values, p=probs)
-        
+
     def simulate_policy(self, policy, max_t):
         policy.setup(self.num_arms)
         total_reward = 0
@@ -34,7 +33,6 @@ class BanditProblem:
 
             avg_reward = total_reward / t
             optimal_rate = optimal_actions / t
-
             data.append([arm, reward, avg_reward, optimal_rate, cumulative_regret])
 
         df = pd.DataFrame(data, columns=["arm", "reward", "avg_reward", "optimal_rate", "cum_regret"])
